@@ -6,7 +6,8 @@
  */
 async function renderPlate(plateText, width = 600, height = 100) {
 
-  const drawText = plateText.replace(/[^A-Za-z0-9]/g, "\u0000");
+  const hasRegionSlot = /^[^\x00-\x7F]/.test(plateText);
+  const drawText = plateText.replace(/[^A-Za-z0-9]/g, "");
 
   await document.fonts.ready;
   const canvas = document.createElement("canvas");
@@ -33,7 +34,7 @@ async function renderPlate(plateText, width = 600, height = 100) {
   // 中层文字设置
   const fontStr = "48px PlateFont";
   ctx.font = fontStr;
-  ctx.textAlign = "center";
+  ctx.textAlign = "left";
   ctx.textBaseline = "middle";
 
 // 关键：等待canvas上下文真正绑定字体
@@ -46,6 +47,9 @@ for(let i=0;i<maxRetry;i++){
 throw new Error("Canvas绑定PlateFont失败");
 }
 await waitCanvasFont(fontStr);
+  const slotWidth = hasRegionSlot ? ctx.measureText("A").width : 0;
+  const textWidth = slotWidth + ctx.measureText(drawText).width;
+  const textX = (width - textWidth) / 2;
 
   // ========= 仅新增变换平移，等效手动偏移基线 =========
   ctx.save();
@@ -59,8 +63,14 @@ await waitCanvasFont(fontStr);
   gradient.addColorStop(1, "#CA0401");
   ctx.fillStyle = gradient;
 
-  // 画布正中心绘制文字，维持原有参数不变
-  ctx.fillText(drawText, width / 2, height / 2);
+  ctx.fillText(drawText, textX + slotWidth, height / 2);
+  if (hasRegionSlot) {
+    const boxWidth = slotWidth * 0.6;
+    const boxGap = 5;
+    ctx.strokeStyle = "#190D25";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(textX + slotWidth - boxWidth - boxGap + ctx.lineWidth / 2, height / 2 - 20, boxWidth - ctx.lineWidth, 40);
+  }
   ctx.restore();
   // =====================================================
 
